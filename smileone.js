@@ -70,4 +70,44 @@ async function checkRole(region, game, userId, phpsessid, zoneId = '') {
   }
 }
 
-module.exports = { checkRole, REGIONS, BASE_URL };
+async function getGamesList(region = 'br') {
+  try {
+    const url = region === 'global' ? BASE_URL : `${BASE_URL}/${region}`;
+    const res = await axios.get(url, { headers: HEADERS, timeout: 30000 });
+    const html = res.data;
+
+    const jsonMatch = html.match(/gameList\s*=\s*(\[[\s\S]*?\]);/);
+    if (jsonMatch) {
+      try {
+        const list = JSON.parse(jsonMatch[1]);
+        return list.map(g => ({
+          title: g.title || '',
+          slug: (g.url || '').replace(/\/$/, '').split('/').pop(),
+          url: g.url || '',
+          discount: g.discount || '',
+        }));
+      } catch {}
+    }
+
+    const slugs = new Set();
+    const games = [];
+    const linkPattern = /href="(https?:\/\/[^"]*\/merchant\/([^"?]+))"/g;
+    let m;
+    while ((m = linkPattern.exec(html)) !== null) {
+      const slug = m[2].replace(/\/$/, '').split('?')[0];
+      if (!slugs.has(slug)) {
+        slugs.add(slug);
+        games.push({
+          title: slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+          slug,
+          url: m[1],
+        });
+      }
+    }
+    return games;
+  } catch {
+    return [];
+  }
+}
+
+module.exports = { checkRole, getGamesList, REGIONS, BASE_URL };
