@@ -1,5 +1,5 @@
 const express = require('express');
-const { checkRole } = require('./smileone');
+const { checkRole, getGamesList } = require('./smileone');
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -28,6 +28,14 @@ async function handleCheckRole(req, res, game) {
 
   res.json(result);
 }
+
+app.get('/games', async (req, res) => {
+  const { region = 'br' } = req.query;
+  let games = await getGamesList(region);
+  const keep = ['wherewindsmeet', 'bloodstrike', 'mobilelegends', 'magicchessgogo', 'arenabreakout', 'racingmaster', 'hok', 'watcherofrealms', 'identityv'];
+  games = games.filter(g => keep.includes(g.slug.toLowerCase()));
+  res.json({ success: true, games });
+});
 
 if (require.main === module) {
   app.listen(PORT, () => {
